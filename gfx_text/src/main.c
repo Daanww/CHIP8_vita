@@ -217,9 +217,9 @@ int main(int argc, char *argv[])
 	unsigned short indexRegister = 0x0;
 	struct textData indexRegisterData = {
 		.text = "indexRegister",
-		.size = 24,
+		.size = 20,
 		.textColor = color_lightBlue,
-		.x = 10,
+		.x = 0,
 		.y = 10,
 		.textTexture = NULL,
 		.hasNumValue = true,
@@ -233,9 +233,9 @@ int main(int argc, char *argv[])
 	unsigned short programCounter = 0x0;
 	struct textData programCounterData = {
 		.text = "programCounter",
-		.size = 24,
+		.size = 20,
 		.textColor = color_lightBlue,
-		.x = 10,
+		.x = 0,
 		.y = 50,
 		.textTexture = NULL,
 		.hasNumValue = true,
@@ -298,6 +298,10 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	//creating rects for game window
+	SDL_Rect gameWindow[3] = { {150, 0, 10, 320}, {800, 0, 10, 320}, {150, 320, 660, 10} };
+
+	//setting up stuff for drawing
 	SDL_Rect pixel = { 0, 0, 10, 10 };
 	int lastDrawTime = 0;
 	int timeBetweenDraws = 30;
@@ -315,13 +319,16 @@ int main(int argc, char *argv[])
 		//drawing the pixels
 		if (SDL_GetTicks() >= (lastDrawTime + timeBetweenDraws))
 		{
-
-			SDL_SetRenderDrawColor(renderer, color_darkBlue.r, color_darkBlue.g, color_darkBlue.b, 255);
+			//clearing screen
+			SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 			SDL_RenderClear(renderer);
 
-			SDL_SetRenderDrawColor(renderer, color_white.r, color_white.g, color_white.b, 255);
-			
+			//drawing game window
+			SDL_SetRenderDrawColor(renderer, color_darkBlue.r, color_darkBlue.g, color_darkBlue.b, 255);
+			SDL_RenderFillRects(renderer, &gameWindow[0], 3);
+
 			//drawing pixelArray
+			SDL_SetRenderDrawColor(renderer, color_white.r, color_white.g, color_white.b, 255);			
 			lastDrawTime = DrawPixelArray(pixelArray, pixel);
 
 
