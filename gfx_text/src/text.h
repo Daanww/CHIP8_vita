@@ -21,6 +21,9 @@ struct textData {
 	SDL_Texture* textTexture;
 	bool hasNumValue;
 	unsigned short numValue;
+	//offset from text coordinates to render at
+	int xOffset;
+	int yOffset;
 	SDL_Color numColor;
 	SDL_Texture* numTexture;
 };

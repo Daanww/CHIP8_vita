@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <string.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 #include <debugScreen.h>
@@ -42,7 +43,7 @@ SDL_Color color_darkBlue = { 0x11, 0x2D, 0x4E };	// #112d4e
 SDL_Window* window = NULL;
 SDL_Renderer* renderer = NULL;
 
-
+int textSize = 20;
 
 //opens debugwindow and prints error message
 void DebugPrint(const char function[], int errorType)
@@ -127,12 +128,6 @@ bool initialize()
 }
 
 
-
-
-
-
-
-
 //creating and updating the textures for text elements.
 void createTextTexture(struct textData *textData, bool updateText, bool updateNum)
 {
@@ -156,7 +151,6 @@ void createTextTexture(struct textData *textData, bool updateText, bool updateNu
 }
 
 
-
 void drawTextElements()
 {
 	//drawing all text elements
@@ -174,7 +168,8 @@ void drawTextElements()
 			if (textDataArray[i].hasNumValue)
 			{
 				//draw num element using tempTextureRect
-				tempTextureRect.y += (textDataArray[i].size + 1);
+				tempTextureRect.x += textDataArray[i].xOffset;
+				tempTextureRect.y += textDataArray[i].yOffset;
 				SDL_QueryTexture(textDataArray[i].numTexture, NULL, NULL, &tempTextureRect.w, &tempTextureRect.h);
 				SDL_RenderCopy(renderer, textDataArray[i].numTexture, NULL, &tempTextureRect);
 			}
@@ -213,17 +208,78 @@ int main(int argc, char *argv[])
 	//16 registers (0-F, with register F being flag register)
 	unsigned short registers[0x10] = { 0x0 };
 
+	//a temporary struct to initialize all the register structs with
+	struct textData registertextDataArray[16] = { 0 };
+
+	//the main register struct, all others will depend on its coordinates
+	struct textData registerHeaderData = {
+		.text = "Registers:",
+		.size = textSize,
+		.textColor = color_lightBlue,
+		.x = 5,
+		.y = 95,
+		.textTexture = NULL,
+		.hasNumValue = false,
+		.xOffset = textSize,
+		.yOffset = 0,
+		.numValue = 0,
+		.numColor = color_white,
+		.numTexture = NULL };
+	addToTextArrays(&registerHeaderData, NULL);
+
+	//creating all other register textData structs
+	for (int i = 0; i < 16; i++)
+	{
+		
+		sprintf(registertextDataArray[i].text, "%X", i);
+
+		registertextDataArray[i].size = textSize;
+		registertextDataArray[i].textColor = color_lightBlue;
+
+		if (i < 8)
+		{
+			registertextDataArray[i].x = registerHeaderData.x;
+		}
+		else
+		{
+			registertextDataArray[i].x = registerHeaderData.x + textSize * 4;
+		}
+
+		if (i < 8)
+		{
+			registertextDataArray[i].y = registerHeaderData.y + (textSize * 6 / 5) * (i+1);
+		}
+		else
+		{
+			registertextDataArray[i].y = registerHeaderData.y + (textSize * 6 / 5) * (i-7);
+		}
+
+		registertextDataArray[i].textTexture = NULL;
+		registertextDataArray[i].hasNumValue = true;
+		registertextDataArray[i].xOffset = textSize;
+		registertextDataArray[i].yOffset = 0;
+		registertextDataArray[i].numValue = 0;
+		registertextDataArray[i].numColor = color_white;
+		registertextDataArray[i].numTexture = NULL;
+		addToTextArrays(&(registertextDataArray[i]), &(registers[i]));
+	}
+
+
+	
+
 	//indexRegister(points to memory adresses)
 	unsigned short indexRegister = 0x0;
 	struct textData indexRegisterData = {
 		.text = "indexRegister",
-		.size = 20,
+		.size = textSize,
 		.textColor = color_lightBlue,
-		.x = 0,
-		.y = 10,
+		.x = 5,
+		.y = 5,
 		.textTexture = NULL,
 		.hasNumValue = true,
 		.numValue = 0,
+		.xOffset = 0,
+		.yOffset = textSize+1,
 		.numColor = color_white,
 		.numTexture = NULL };
 	addToTextArrays(&indexRegisterData, &indexRegister);
@@ -233,13 +289,15 @@ int main(int argc, char *argv[])
 	unsigned short programCounter = 0x0;
 	struct textData programCounterData = {
 		.text = "programCounter",
-		.size = 20,
+		.size = textSize,
 		.textColor = color_lightBlue,
-		.x = 0,
+		.x = 5,
 		.y = 50,
 		.textTexture = NULL,
 		.hasNumValue = true,
 		.numValue = 0,
+		.xOffset = 0,
+		.yOffset = textSize+1,
 		.numColor = color_white,
 		.numTexture = NULL };
 	addToTextArrays(&programCounterData, &programCounter);
@@ -342,6 +400,12 @@ int main(int argc, char *argv[])
 			if (totalFrames % 3 == 0)
 				indexRegister++;
 			programCounter++;
+			if (totalFrames % 5 == 0)
+				registers[0]++;
+			registers[1]++;
+			if (totalFrames % 2 == 0)
+				registers[1]--;
+			registers[10]++;
 		}
 		if (totalFrames > 300)
 			break;
