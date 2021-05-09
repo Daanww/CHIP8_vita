@@ -25,12 +25,19 @@ TTF_Font *currentFont = NULL;
 
 
 //convert a number to a string in hex representation
-char *hexToString(unsigned short hex)
+char *hexToString(short hex)
 {
 	static char string[8];
+	if (hex >= 0)
+	{
 	int nChar = sprintf(string, "%#04X", hex);
 	//changing the x to lowercase to for aestetic reasons
 	string[1] = 'x';
+	}
+	else
+	{
+		int nChar = sprintf(string, "%i", hex);
+	}
 	return string;
 }
 
@@ -64,7 +71,7 @@ SDL_Texture* loadText(SDL_Renderer *renderer, const char *text, int size, SDL_Co
 
 
 //adding text elements to textDataArray and textPointerArray
-void addToTextArrays(struct textData *textData, unsigned short *value)
+void addToTextArrays(struct textData *textData, short *value)
 {
 
 	for (int i = 0; i < 63; i++)

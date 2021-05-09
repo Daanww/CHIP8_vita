@@ -42,10 +42,10 @@ extern SDL_Rect tempTextureRect;
 extern TTF_Font *currentFont;
 
 
-char *hexToString(unsigned short hex);
+char *hexToString(short hex);
 SDL_Texture* loadText(SDL_Renderer *renderer, const char *text, int size, SDL_Color color);
 
-void addToTextArrays(struct textData *textData, unsigned short *value);
+void addToTextArrays(struct textData *textData, short *value);
 
 void updateTextElementsNumValues();
 void destroyTextTextures();

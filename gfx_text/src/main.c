@@ -11,10 +11,6 @@
 #define printf psvDebugScreenPrintf
 
 
-
-
-
-
 const char fontArray[] = {
 	0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
 	0x20, 0x60, 0x20, 0x20, 0x70, // 1
@@ -35,10 +31,10 @@ const char fontArray[] = {
 };
 
 //some colors I got from colorhunt.co
-SDL_Color color_white = { 0xF9, 0xF7, 0xF7 };		// #f9f7f7
-SDL_Color color_lightBlue = { 0xDB, 0xE2, 0xEF };	// #dbe2ef
-SDL_Color color_blue = { 0x3F, 0x72, 0xAF };		// #3f72af
-SDL_Color color_darkBlue = { 0x11, 0x2D, 0x4E };	// #112d4e
+SDL_Color color_white = { 0xEA, 0xEA, 0xEA };		// #eaeaea
+SDL_Color color_lightBlue = { 0x08, 0xD9, 0xD6 };	// #08D9D6
+SDL_Color color_red = { 0xFF, 0x2E, 0x63 };			// #FF2E63
+SDL_Color color_black = { 0x25, 0x2A, 0x34 };		// #252A34
 
 SDL_Window* window = NULL;
 SDL_Renderer* renderer = NULL;
@@ -181,6 +177,52 @@ void drawTextElements()
 	}
 }
 
+bool isStackEmpty(short* top)
+{
+	if (*top == -1)
+		return true;
+	else
+	{
+		return false;
+	}
+}
+bool isStackFull(short* top, int stackSize)
+{
+	if (*top == (stackSize-1))
+		return true;
+	else
+	{
+		return false;
+	}
+}
+void pushStack(unsigned short address, unsigned short* stack, int stackSize, short* top, unsigned short* stackTopAddress)
+{
+	if (!isStackFull(top, stackSize))
+	{
+		(*top)++;
+		stack[*top] = address;
+		*stackTopAddress = address;
+	}
+	else
+	{
+		DebugPrint("Couldnt push on stack, stack is full!", 3);
+	}
+}
+unsigned short popStack(unsigned short* stack, short* top, unsigned short* stackTopAdress)
+{
+	unsigned short adress;
+	if (!isStackEmpty(top))
+	{
+		adress = stack[*top];
+		(*top)--;
+		*stackTopAdress = stack[*top];
+		return adress;
+	}
+	else 
+	{
+		DebugPrint("Could not pop data from stack, stack is empty!", 3);
+	}
+}
 
 
 int main(int argc, char *argv[])
@@ -215,7 +257,7 @@ int main(int argc, char *argv[])
 	struct textData registerHeaderData = {
 		.text = "Registers:",
 		.size = textSize,
-		.textColor = color_lightBlue,
+		.textColor = color_red,
 		.x = 5,
 		.y = 95,
 		.textTexture = NULL,
@@ -234,7 +276,7 @@ int main(int argc, char *argv[])
 		sprintf(registertextDataArray[i].text, "%X", i);
 
 		registertextDataArray[i].size = textSize;
-		registertextDataArray[i].textColor = color_lightBlue;
+		registertextDataArray[i].textColor = color_red;
 
 		if (i < 8)
 		{
@@ -242,7 +284,7 @@ int main(int argc, char *argv[])
 		}
 		else
 		{
-			registertextDataArray[i].x = registerHeaderData.x + textSize * 4;
+			registertextDataArray[i].x = registerHeaderData.x + textSize * 3.5;
 		}
 
 		if (i < 8)
@@ -263,7 +305,7 @@ int main(int argc, char *argv[])
 		registertextDataArray[i].numTexture = NULL;
 		addToTextArrays(&(registertextDataArray[i]), &(registers[i]));
 	}
-
+	//bottom of the registers is at registerHeaderData.y + (textSize * 6 /5) * 9
 
 	
 
@@ -272,7 +314,7 @@ int main(int argc, char *argv[])
 	struct textData indexRegisterData = {
 		.text = "indexRegister",
 		.size = textSize,
-		.textColor = color_lightBlue,
+		.textColor = color_red,
 		.x = 5,
 		.y = 5,
 		.textTexture = NULL,
@@ -290,7 +332,7 @@ int main(int argc, char *argv[])
 	struct textData programCounterData = {
 		.text = "programCounter",
 		.size = textSize,
-		.textColor = color_lightBlue,
+		.textColor = color_red,
 		.x = 5,
 		.y = 50,
 		.textTexture = NULL,
@@ -303,8 +345,40 @@ int main(int argc, char *argv[])
 	addToTextArrays(&programCounterData, &programCounter);
 
 	//stack (holds memory locations for calling/returning from subroutines)
-	unsigned short stack[64] = { 0x0 };
-	unsigned short* stackPointer = stack;
+	unsigned short stack[32] = { 0x0 };
+	short stackTop = -1;
+	unsigned short stackTopAddress = 0;
+
+	struct textData stackTopData = {
+		.text = "stackTop:",
+		.size = textSize,
+		.textColor = color_red,
+		.x = 5,
+		.y = 315,
+		.textTexture = NULL,
+		.hasNumValue = true,
+		.numValue = 0,
+		.xOffset = textSize * 5,
+		.yOffset = 0,
+		.numColor = color_white,
+		.numTexture = NULL };
+	addToTextArrays(&stackTopData, &stackTop);
+
+	struct textData stackTopAddressData = {
+		.text = "address:",
+		.size = textSize,
+		.textColor = color_red,
+		.x = stackTopData.x,
+		.y = stackTopData.y + textSize * 6 / 5,
+		.textTexture = NULL,
+		.hasNumValue = true,
+		.numValue = 0,
+		.xOffset = textSize * 5,
+		.yOffset = 0,
+		.numColor = color_white,
+		.numTexture = NULL };
+	addToTextArrays(&stackTopAddressData, &stackTopAddress);
+
 
 	//timers
 	unsigned short delayTimer = 60;
@@ -357,7 +431,7 @@ int main(int argc, char *argv[])
 	}
 
 	//creating rects for game window
-	SDL_Rect gameWindow[3] = { {150, 0, 10, 320}, {800, 0, 10, 320}, {150, 320, 660, 10} };
+	SDL_Rect gameWindow[3] = { {150, 0, 10, 320}, {150, 320, 660, 10}, {800, 0, 10, 320}  };
 
 	//setting up stuff for drawing
 	SDL_Rect pixel = { 0, 0, 10, 10 };
@@ -378,12 +452,12 @@ int main(int argc, char *argv[])
 		if (SDL_GetTicks() >= (lastDrawTime + timeBetweenDraws))
 		{
 			//clearing screen
-			SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+			SDL_SetRenderDrawColor(renderer, color_black.r, color_black.g, color_black.b, 255);
 			SDL_RenderClear(renderer);
 
 			//drawing game window
-			SDL_SetRenderDrawColor(renderer, color_darkBlue.r, color_darkBlue.g, color_darkBlue.b, 255);
-			SDL_RenderFillRects(renderer, &gameWindow[0], 3);
+			SDL_SetRenderDrawColor(renderer, color_lightBlue.r, color_lightBlue.g, color_lightBlue.b, 255);
+			SDL_RenderFillRects(renderer, gameWindow, 3);
 
 			//drawing pixelArray
 			SDL_SetRenderDrawColor(renderer, color_white.r, color_white.g, color_white.b, 255);			
@@ -406,6 +480,18 @@ int main(int argc, char *argv[])
 			if (totalFrames % 2 == 0)
 				registers[1]--;
 			registers[10]++;
+
+			
+			if (totalFrames % 20 == 0)
+			{
+				pushStack(totalFrames, stack, 32, &stackTop, &stackTopAddress);
+			}
+			if (totalFrames % 30 == 0)
+			{
+				int i = popStack(stack, &stackTop, &stackTopAddress);
+			}
+			
+
 		}
 		if (totalFrames > 300)
 			break;
