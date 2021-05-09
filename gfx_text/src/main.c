@@ -41,6 +41,25 @@ SDL_Renderer* renderer = NULL;
 
 int textSize = 20;
 
+typedef struct {
+	unsigned char RAM[0xFFF];
+	unsigned short registers[0x10];
+
+	unsigned short indexRegister;
+	unsigned short programCounter;
+
+	unsigned short stack[32];
+	short stackTop;
+	unsigned short stackTopAddress;
+
+	//timers
+	short delayTimer;
+	short soundTimer;
+
+	bool isPaused;
+
+} machine;
+
 //opens debugwindow and prints error message
 void DebugPrint(const char function[], int errorType)
 {
@@ -177,51 +196,65 @@ void drawTextElements()
 	}
 }
 
-bool isStackEmpty(short* top)
+bool isStackEmpty(machine* cpu)
 {
-	if (*top == -1)
+	if ((cpu->stackTop) == -1)
 		return true;
 	else
 	{
 		return false;
 	}
 }
-bool isStackFull(short* top, int stackSize)
+bool isStackFull(machine* cpu, int stackSize)
 {
-	if (*top == (stackSize-1))
+	if ((cpu->stackTop) == (stackSize-1))
 		return true;
 	else
 	{
 		return false;
 	}
 }
-void pushStack(unsigned short address, unsigned short* stack, int stackSize, short* top, unsigned short* stackTopAddress)
+void pushStack(machine* cpu, int stackSize, unsigned short address)
 {
-	if (!isStackFull(top, stackSize))
+	if (!isStackFull(cpu, stackSize))
 	{
-		(*top)++;
-		stack[*top] = address;
-		*stackTopAddress = address;
+		(cpu->stackTop)++;
+		cpu->stack[(cpu->stackTop)] = address;
+		(cpu->stackTopAddress) = address;
 	}
 	else
 	{
 		DebugPrint("Couldnt push on stack, stack is full!", 3);
 	}
 }
-unsigned short popStack(unsigned short* stack, short* top, unsigned short* stackTopAdress)
+unsigned short popStack(machine* cpu)
 {
-	unsigned short adress;
-	if (!isStackEmpty(top))
+	unsigned short address;
+	if (!isStackEmpty(cpu))
 	{
-		adress = stack[*top];
-		(*top)--;
-		*stackTopAdress = stack[*top];
-		return adress;
+		address = cpu->stack[(cpu->stackTop)];
+		(cpu->stackTop)--;
+		(cpu->stackTopAddress) = cpu->stack[(cpu->stackTop)];
+		return address;
 	}
 	else 
 	{
 		DebugPrint("Could not pop data from stack, stack is empty!", 3);
 	}
+}
+
+
+int updateTimers(machine* cpu)
+{
+	(cpu->delayTimer)--;
+	if ((cpu->delayTimer) < 0)
+		(cpu->delayTimer) = 60;
+
+	(cpu->soundTimer)--;
+	if ((cpu->soundTimer) < 0)
+		(cpu->soundTimer) = 60;
+
+	return SDL_GetTicks();
 }
 
 
@@ -238,19 +271,22 @@ int main(int argc, char *argv[])
 
 	char pixelArray[numRows][numColumns] = { 0 };
 
-
+	//create the main processor
+	machine cpu;
 
 
 	//initialize memory, registers, stack, timers
 	//also adding them to both arrays
 
 	//4KB of ram, this is where the font and the game itself gets loaded into
-	unsigned char RAM[0xFFF] = { 0x0 };
+	//cpu.RAM = { 0x0 };
+	//unsigned char RAM[0xFFF] = { 0x0 };
 
 	//16 registers (0-F, with register F being flag register)
-	unsigned short registers[0x10] = { 0x0 };
+	//cpu.registers = { 0x0 };
+	//unsigned short registers[0x10] = { 0x0 };
 
-	//a temporary struct to initialize all the register structs with
+	//a struct to initialize all the register structs with
 	struct textData registertextDataArray[16] = { 0 };
 
 	//the main register struct, all others will depend on its coordinates
@@ -303,14 +339,15 @@ int main(int argc, char *argv[])
 		registertextDataArray[i].numValue = 0;
 		registertextDataArray[i].numColor = color_white;
 		registertextDataArray[i].numTexture = NULL;
-		addToTextArrays(&(registertextDataArray[i]), &(registers[i]));
+		addToTextArrays(&(registertextDataArray[i]), &(cpu.registers[i]));
 	}
 	//bottom of the registers is at registerHeaderData.y + (textSize * 6 /5) * 9
 
 	
 
 	//indexRegister(points to memory adresses)
-	unsigned short indexRegister = 0x0;
+	cpu.indexRegister = 0x0;
+	//unsigned short indexRegister = 0x0;
 	struct textData indexRegisterData = {
 		.text = "indexRegister",
 		.size = textSize,
@@ -324,11 +361,12 @@ int main(int argc, char *argv[])
 		.yOffset = textSize+1,
 		.numColor = color_white,
 		.numTexture = NULL };
-	addToTextArrays(&indexRegisterData, &indexRegister);
+	addToTextArrays(&indexRegisterData, &(cpu.indexRegister));
 
 
 	//program counter (points to current instruction in memory)
-	unsigned short programCounter = 0x0;
+	cpu.programCounter = 0x0;
+	//unsigned short programCounter = 0x0;
 	struct textData programCounterData = {
 		.text = "programCounter",
 		.size = textSize,
@@ -342,12 +380,15 @@ int main(int argc, char *argv[])
 		.yOffset = textSize+1,
 		.numColor = color_white,
 		.numTexture = NULL };
-	addToTextArrays(&programCounterData, &programCounter);
+	addToTextArrays(&programCounterData, &(cpu.programCounter));
 
 	//stack (holds memory locations for calling/returning from subroutines)
-	unsigned short stack[32] = { 0x0 };
-	short stackTop = -1;
-	unsigned short stackTopAddress = 0;
+	//cpu.stack = { 0x0 };
+	cpu.stackTop = -1;
+	cpu.stackTopAddress = 0x0;
+	//unsigned short stack[32] = { 0x0 };
+	//short stackTop = -1;
+	//unsigned short stackTopAddress = 0;
 
 	struct textData stackTopData = {
 		.text = "stackTop:",
@@ -362,7 +403,7 @@ int main(int argc, char *argv[])
 		.yOffset = 0,
 		.numColor = color_white,
 		.numTexture = NULL };
-	addToTextArrays(&stackTopData, &stackTop);
+	addToTextArrays(&stackTopData, &(cpu.stackTop));
 
 	struct textData stackTopAddressData = {
 		.text = "address:",
@@ -377,12 +418,44 @@ int main(int argc, char *argv[])
 		.yOffset = 0,
 		.numColor = color_white,
 		.numTexture = NULL };
-	addToTextArrays(&stackTopAddressData, &stackTopAddress);
+	addToTextArrays(&stackTopAddressData, &(cpu.stackTopAddress));
 
 
 	//timers
-	unsigned short delayTimer = 60;
-	unsigned short soundTimer = 60;
+	cpu.delayTimer = 60;
+	cpu.soundTimer = 60;
+	//short delayTimer = 60;
+	//short soundTimer = 60;
+
+	struct textData delayTimerData = {
+		.text = "delayTimer:",
+		.size = textSize,
+		.textColor = color_red,
+		.x = 5,
+		.y = 375,
+		.textTexture = NULL,
+		.hasNumValue = true,
+		.numValue = 0,
+		.xOffset = textSize * 6,
+		.yOffset = 0,
+		.numColor = color_white,
+		.numTexture = NULL };
+	addToTextArrays(&delayTimerData, &(cpu.delayTimer));
+
+	struct textData soundTimerData = {
+		.text = "soundTimer:",
+		.size = textSize,
+		.textColor = color_red,
+		.x = 5,
+		.y = 400,
+		.textTexture = NULL,
+		.hasNumValue = true,
+		.numValue = 0,
+		.xOffset = textSize * 6,
+		.yOffset = 0,
+		.numColor = color_white,
+		.numTexture = NULL };
+	addToTextArrays(&soundTimerData, &(cpu.soundTimer));
 
 	//create textures for all text elements
 	for (int i = 0; i < 63; i++)
@@ -405,7 +478,7 @@ int main(int argc, char *argv[])
 	//stores font from 0x050-0x09F
 	for (int i = 0; i < (sizeof(fontArray) / sizeof(char)); i++)
 	{
-		RAM[0x50 + i] = fontArray[i];
+		cpu.RAM[0x50 + i] = fontArray[i];
 	}
 
 	
@@ -436,8 +509,9 @@ int main(int argc, char *argv[])
 	//setting up stuff for drawing
 	SDL_Rect pixel = { 0, 0, 10, 10 };
 	int lastDrawTime = 0;
-	int timeBetweenDraws = 30;
+	int timeBetweenDraws = 30; //time in milliseconds
 	int totalFrames = 0;
+	int lastUpdateTimersTime = 0;
 	
 
 	//main loop
@@ -446,9 +520,12 @@ int main(int argc, char *argv[])
 		
 		updateTextElementsNumValues();
 		
+		if (SDL_GetTicks() >= (lastUpdateTimersTime + 15))
+		{
+			lastUpdateTimersTime = updateTimers(&cpu);
+		}
 
-
-		//drawing the pixels
+		//drawing to screen
 		if (SDL_GetTicks() >= (lastDrawTime + timeBetweenDraws))
 		{
 			//clearing screen
@@ -457,7 +534,10 @@ int main(int argc, char *argv[])
 
 			//drawing game window
 			SDL_SetRenderDrawColor(renderer, color_lightBlue.r, color_lightBlue.g, color_lightBlue.b, 255);
-			SDL_RenderFillRects(renderer, gameWindow, 3);
+			SDL_RenderFillRect(renderer, &(gameWindow[0]));
+			SDL_RenderFillRect(renderer, &(gameWindow[1]));
+			SDL_RenderFillRect(renderer, &(gameWindow[2]));
+			
 
 			//drawing pixelArray
 			SDL_SetRenderDrawColor(renderer, color_white.r, color_white.g, color_white.b, 255);			
@@ -472,27 +552,30 @@ int main(int argc, char *argv[])
 
 			//updating indexRegister to see if the texture also automatically gets updated
 			if (totalFrames % 3 == 0)
-				indexRegister++;
-			programCounter++;
+				cpu.indexRegister++;
+			cpu.programCounter++;
 			if (totalFrames % 5 == 0)
-				registers[0]++;
-			registers[1]++;
+				cpu.registers[0]++;
+			cpu.registers[1]++;
 			if (totalFrames % 2 == 0)
-				registers[1]--;
-			registers[10]++;
+				cpu.registers[1]--;
+			cpu.registers[10]++;
 
 			
 			if (totalFrames % 20 == 0)
 			{
-				pushStack(totalFrames, stack, 32, &stackTop, &stackTopAddress);
+				pushStack(&cpu, 32, totalFrames);
 			}
 			if (totalFrames % 30 == 0)
 			{
-				int i = popStack(stack, &stackTop, &stackTopAddress);
+				int i = popStack(&cpu);
 			}
 			
 
 		}
+
+
+
 		if (totalFrames > 300)
 			break;
 	}
