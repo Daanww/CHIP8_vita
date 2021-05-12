@@ -5,8 +5,10 @@
 #include <string.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
-#include <debugScreen.h>
+#include "debugScreen.h"
 #include "text.h"
+#include "cpu.h"
+#include "input.h"
 
 #define printf psvDebugScreenPrintf
 
@@ -41,27 +43,10 @@ SDL_Renderer* renderer = NULL;
 
 int textSize = 20;
 
-typedef struct {
-	unsigned char RAM[0xFFF];
-	unsigned short registers[0x10];
 
-	unsigned short indexRegister;
-	unsigned short programCounter;
-
-	unsigned short stack[32];
-	short stackTop;
-	unsigned short stackTopAddress;
-
-	//timers
-	short delayTimer;
-	short soundTimer;
-
-	bool isPaused;
-
-} machine;
 
 //opens debugwindow and prints error message
-void DebugPrint(const char function[], int errorType)
+void DebugPrintSDL(const char function[],int errorType)
 {
 	int remain = 10;
 	psvDebugScreenInit();
@@ -85,7 +70,21 @@ void DebugPrint(const char function[], int errorType)
 
 }
 
+//opens debugwindow and prints error message
+void DebugPrintValue(const char function[], int value)
+{
+	int remain = 5;
+	psvDebugScreenInit();
+	
+	printf("Potential error: %s, value: %X", function, value);
 
+	while (remain-- > 0)
+	{
+		sceKernelDelayThread(1000 * 1000); //delay 1 second
+	}
+
+
+}
 
 //draws the pixelArray, returns the time at which it draws, use this to keep frame rate locked
 int DrawPixelArray(char pixelArray[numRows][numColumns], SDL_Rect pixel)
@@ -115,19 +114,19 @@ bool initialize()
 
 	if (SDL_Init(SDL_INIT_VIDEO) != 0)
 	{
-		DebugPrint("SDL_Init", SDL);
+		DebugPrintSDL("SDL_Init", SDL);
 		success = false;
 	}
 	if (TTF_Init() != 0)
 	{
-		DebugPrint("TTF_Init", TTF);
+		DebugPrintSDL("TTF_Init", TTF);
 		success = false;
 	}
 
 	window = SDL_CreateWindow("CHIP8EMU", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 960, 544, 0);
 	if (window == NULL)
 	{
-		DebugPrint("SDL_CreateWindow", SDL);
+		DebugPrintSDL("SDL_CreateWindow", SDL);
 		success = false;
 	}
 
@@ -135,7 +134,7 @@ bool initialize()
 	renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 	if (renderer == NULL)
 	{
-		DebugPrint("SDL_CreateRenderer", SDL);
+		DebugPrintSDL("SDL_CreateRenderer", SDL);
 		success = false;
 	}
 	
@@ -224,7 +223,7 @@ void pushStack(machine* cpu, int stackSize, unsigned short address)
 	}
 	else
 	{
-		DebugPrint("Couldnt push on stack, stack is full!", 3);
+		DebugPrintSDL("Couldnt push on stack, stack is full!", 3);
 	}
 }
 unsigned short popStack(machine* cpu)
@@ -239,7 +238,7 @@ unsigned short popStack(machine* cpu)
 	}
 	else 
 	{
-		DebugPrint("Could not pop data from stack, stack is empty!", 3);
+		DebugPrintSDL("Could not pop data from stack, stack is empty!", 3);
 	}
 }
 
@@ -265,6 +264,9 @@ int main(int argc, char *argv[])
 	if (!initializationFlag)
 		return 1;
 
+	//initialize input
+	keypadPresses input;
+	input = initializeInput();
 
 	//initialize array for drawing
 	//0 = no draw, 1 = draw white pixel at that location
@@ -520,6 +522,8 @@ int main(int argc, char *argv[])
 		
 		updateTextElementsNumValues();
 		
+		getInput(&input);
+
 		if (SDL_GetTicks() >= (lastUpdateTimersTime + 15))
 		{
 			lastUpdateTimersTime = updateTimers(&cpu);
@@ -538,6 +542,15 @@ int main(int argc, char *argv[])
 			SDL_RenderFillRect(renderer, &(gameWindow[1]));
 			SDL_RenderFillRect(renderer, &(gameWindow[2]));
 			
+			//testing if input is working
+			if (input.keys[1])
+			{
+				SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+				SDL_RenderFillRect(renderer, &(gameWindow[0]));
+			}
+			if (input.keys[0])
+				break;
+
 
 			//drawing pixelArray
 			SDL_SetRenderDrawColor(renderer, color_white.r, color_white.g, color_white.b, 255);			

@@ -6,7 +6,7 @@
 
 
 #include "text.h"
-#include <debugScreen.h>
+#include "debugScreen.h"
 
 //array which holds all the data for rendering text elements to screen (memory, registers, stackpointer, timers, current instruction etc.)
 //another array is also created holding pointers to the numerical values associated with those text elements.
@@ -52,7 +52,7 @@ SDL_Texture* loadText(SDL_Renderer *renderer, const char *text, int size, SDL_Co
 		currentFont = TTF_OpenFont("/sce_sys/font/Roboto-Regular.ttf", size);
 		if (currentFont == NULL)
 		{
-			DebugPrint("TTF_OpenFont", TTF);
+			DebugPrintSDL("TTF_OpenFont", TTF);
 			return NULL;
 		}
 	}
@@ -63,7 +63,7 @@ SDL_Texture* loadText(SDL_Renderer *renderer, const char *text, int size, SDL_Co
 	SDL_FreeSurface(surface);
 	if (texture == NULL)
 	{
-		DebugPrint("SDL_CreateTextureFromSurface", SDL);
+		DebugPrintSDL("SDL_CreateTextureFromSurface", SDL);
 		return NULL;
 	}
 	return texture;
@@ -90,7 +90,7 @@ void addToTextArrays(struct textData *textData, short *value)
 		{
 			if (i == 63)
 			{
-				DebugPrint("Cant add text to arrays, arrays are full", 3);
+				DebugPrintSDL("Cant add text to arrays, arrays are full", 3);
 				break;
 			}
 		}

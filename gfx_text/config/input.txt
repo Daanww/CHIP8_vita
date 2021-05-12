@@ -1,0 +1,22 @@
+# Set input for CHIP8. CHIP8 uses a numpad 1-F numpad (in hex, thus 1-9 and A,B,C,D,E,F).
+# You can assign vita buttons here to emulate that numpad.
+# The vita button names are: UP, DOWN, LEFT, RIGHT, TRIANGLE, CIRCLE, CROSS, SQUARE, START, SELECT, LTRIGGER, RTRIGGER
+# Joysticks are also supported with the names being: LSTICKUP, LSTICKDOWN, LSTICKLEFT, LSTICKRIGHT, RSTICKUP, RSTICKDOWN, RSTICKLEFT, RSTICKRIGHT
+# Hashtags are comments
+# The format of this input file is important for the emulator to properly work *BE CAREFULL!*.
+KEY_0=START
+KEY_1=UP
+KEY_2=DOWN
+KEY_3=LEFT
+KEY_4=RIGHT
+KEY_5=TRIANGLE
+KEY_6=CIRCLE
+KEY_7=CROSS
+KEY_8=SQUARE
+KEY_9=LTRIGGER
+KEY_A=RTRIGGER
+KEY_B=LSTICKDOWN
+KEY_C=LSTICKLEFT
+KEY_D=LSTICKRIGHT
+KEY_E=RSTICKUP
+KEY_F=RSTICKDOWN
