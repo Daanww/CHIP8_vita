@@ -1,10 +1,7 @@
 #ifndef TEXT_H
 #define TEXT_H
 
-enum {
-	numRows = 32,
-	numColumns = 64
-};
+
 enum {
 	TTF = 1,
 	SDL = 2

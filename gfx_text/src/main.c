@@ -13,24 +13,7 @@
 #define printf psvDebugScreenPrintf
 
 
-const char fontArray[] = {
-	0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
-	0x20, 0x60, 0x20, 0x20, 0x70, // 1
-	0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
-	0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
-	0x90, 0x90, 0xF0, 0x10, 0x10, // 4
-	0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
-	0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
-	0xF0, 0x10, 0x20, 0x40, 0x40, // 7
-	0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
-	0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
-	0xF0, 0x90, 0xF0, 0x90, 0x90, // A
-	0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
-	0xF0, 0x80, 0x80, 0x80, 0xF0, // C
-	0xE0, 0x90, 0x90, 0x90, 0xE0, // D
-	0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
-	0xF0, 0x80, 0xF0, 0x80, 0x80  // F
-};
+
 
 //some colors I got from colorhunt.co
 SDL_Color color_white = { 0xEA, 0xEA, 0xEA };		// #eaeaea
@@ -73,7 +56,7 @@ void DebugPrintSDL(const char function[],int errorType)
 //opens debugwindow and prints error message
 void DebugPrintValue(const char function[], int value)
 {
-	int remain = 5;
+	int remain = 10;
 	psvDebugScreenInit();
 	
 	printf("Potential error: %s, value: %X", function, value);
@@ -87,14 +70,14 @@ void DebugPrintValue(const char function[], int value)
 }
 
 //draws the pixelArray, returns the time at which it draws, use this to keep frame rate locked
-int DrawPixelArray(char pixelArray[numRows][numColumns], SDL_Rect pixel)
+int DrawPixelArray(machine* cpu, SDL_Rect pixel)
 {
 
 	for (int i = 0; i < numRows; i++)
 	{
 		for (int j = 0; j < numColumns; j++)
 		{
-			if (pixelArray[i][j] == 1)
+			if (cpu->pixelArray[i][j] == true)
 			{
 				//160 = (960-640)/2, the top left corner of the game window
 				pixel.x = 160 + j * pixel.w;
@@ -195,66 +178,6 @@ void drawTextElements()
 	}
 }
 
-bool isStackEmpty(machine* cpu)
-{
-	if ((cpu->stackTop) == -1)
-		return true;
-	else
-	{
-		return false;
-	}
-}
-bool isStackFull(machine* cpu, int stackSize)
-{
-	if ((cpu->stackTop) == (stackSize-1))
-		return true;
-	else
-	{
-		return false;
-	}
-}
-void pushStack(machine* cpu, int stackSize, unsigned short address)
-{
-	if (!isStackFull(cpu, stackSize))
-	{
-		(cpu->stackTop)++;
-		cpu->stack[(cpu->stackTop)] = address;
-		(cpu->stackTopAddress) = address;
-	}
-	else
-	{
-		DebugPrintSDL("Couldnt push on stack, stack is full!", 3);
-	}
-}
-unsigned short popStack(machine* cpu)
-{
-	unsigned short address;
-	if (!isStackEmpty(cpu))
-	{
-		address = cpu->stack[(cpu->stackTop)];
-		(cpu->stackTop)--;
-		(cpu->stackTopAddress) = cpu->stack[(cpu->stackTop)];
-		return address;
-	}
-	else 
-	{
-		DebugPrintSDL("Could not pop data from stack, stack is empty!", 3);
-	}
-}
-
-
-int updateTimers(machine* cpu)
-{
-	(cpu->delayTimer)--;
-	if ((cpu->delayTimer) < 0)
-		(cpu->delayTimer) = 60;
-
-	(cpu->soundTimer)--;
-	if ((cpu->soundTimer) < 0)
-		(cpu->soundTimer) = 60;
-
-	return SDL_GetTicks();
-}
 
 
 int main(int argc, char *argv[])
@@ -268,17 +191,18 @@ int main(int argc, char *argv[])
 	keypadPresses input;
 	input = initializeInput();
 
-	//initialize array for drawing
-	//0 = no draw, 1 = draw white pixel at that location
+	
 
-	char pixelArray[numRows][numColumns] = { 0 };
+	
 
-	//create the main processor
+	//create the main processor and initializing stuff
 	machine cpu;
-
+	loadFont(&cpu);
+	loadRom(&cpu, "IBM_Logo.ch8");
+	clearScreen(&cpu);
 
 	//initialize memory, registers, stack, timers
-	//also adding them to both arrays
+	//also adding them to both arrays needed for proper text rendering
 
 	//4KB of ram, this is where the font and the game itself gets loaded into
 	//cpu.RAM = { 0x0 };
@@ -476,15 +400,6 @@ int main(int argc, char *argv[])
 
 	
 
-	//load font into memory
-	//stores font from 0x050-0x09F
-	for (int i = 0; i < (sizeof(fontArray) / sizeof(char)); i++)
-	{
-		cpu.RAM[0x50 + i] = fontArray[i];
-	}
-
-	
-
 
 
 
@@ -494,16 +409,7 @@ int main(int argc, char *argv[])
 	//screen is 960x544 pixels, drawing the game at a resolution of 640x320 gives enough room for debug text and allows for game pixels of either 10x10 or 5x5.
 	//thus the game window will be from (160,0) to (800,320) (y=0 at top of window)
 
-	//set alternating pixels to 1
 
-	for (int row = 0; row < numRows; row++)
-	{
-		for (int column = 0; column < numColumns; column++)
-		{
-			if (row % 2 == 0 || column % 2 == 0)
-				pixelArray[row][column] = 1;
-		}
-	}
 
 	//creating rects for game window
 	SDL_Rect gameWindow[3] = { {150, 0, 10, 320}, {150, 320, 660, 10}, {800, 0, 10, 320}  };
@@ -554,7 +460,7 @@ int main(int argc, char *argv[])
 
 			//drawing pixelArray
 			SDL_SetRenderDrawColor(renderer, color_white.r, color_white.g, color_white.b, 255);			
-			lastDrawTime = DrawPixelArray(pixelArray, pixel);
+			lastDrawTime = DrawPixelArray(&cpu, pixel);
 
 
 			drawTextElements();
@@ -577,7 +483,7 @@ int main(int argc, char *argv[])
 			
 			if (totalFrames % 20 == 0)
 			{
-				pushStack(&cpu, 32, totalFrames);
+				pushStack(&cpu, totalFrames);
 			}
 			if (totalFrames % 30 == 0)
 			{
@@ -588,9 +494,7 @@ int main(int argc, char *argv[])
 		}
 
 
-
-		if (totalFrames > 300)
-			break;
+		
 	}
 
 

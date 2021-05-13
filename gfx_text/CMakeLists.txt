@@ -58,6 +58,7 @@ vita_create_self(${PROJECT_NAME}.self ${PROJECT_NAME})
 vita_create_vpk(${PROJECT_NAME}.vpk ${VITA_TITLEID} ${PROJECT_NAME}.self
   VERSION ${VITA_VERSION}
   NAME ${VITA_APP_NAME}
+  FILE roms/IBM_Logo.ch8 roms/IBM_Logo.ch8
   FILE config/input.txt config/input.txt
   FILE sce_sys/font/Roboto-Regular.ttf sce_sys/font/Roboto-Regular.ttf
   FILE sce_sys/icon0.png sce_sys/icon0.png

@@ -12,8 +12,9 @@ typedef struct {
 	int inputMapping[20];
 	//a list of the CHIP8 keys, with a boolean attached to indicate if they are pressed or not
 
-	//!!!! if youre going to change the size of keys array, also change it in GetInput(), otherwise you will get memory corruption. current size is 16 !!!!
-	bool keys[16];
+	//!!!! if youre going to change the size of keys array, also change it in GetInput(), otherwise you will get memory corruption. current size is 17 !!!!
+	//it is size 17 instead of 16 because keys[16] is reserved for all the vita inputs that dont get mapped to any other key, the waste bin
+	bool keys[17];
 
 } keypadPresses;
 

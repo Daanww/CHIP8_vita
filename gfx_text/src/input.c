@@ -78,6 +78,9 @@ keypadPresses initializeInput()
 	sceCtrlSetSamplingMode(SCE_CTRL_MODE_ANALOG);
 
 	keypadPresses keypadPresses;
+	//setting all inputmaps to not mapped at first
+	for (int i = 0; i < 20; i++)
+		keypadPresses.inputMapping[i] = 16;
 
 	//open input.txt and setup inputMapping array in keypadPresses
 	FILE* fp = fopen("app0:config/input.txt", "r");
@@ -147,12 +150,91 @@ int findVitaKey(char* buffer)
 
 void getInput(keypadPresses* keypadPresses)
 {
-	memset(keypadPresses->keys, 0x00, 16);
+	memset(keypadPresses->keys, 0x00, 17);
 	SceCtrlData ctrl = {0};
 	sceCtrlReadBufferPositive(0, &ctrl, 1);
+
 	if (ctrl.buttons & (SCE_CTRL_UP))
 	{
-		keypadPresses->keys[keypadPresses->inputMapping[0]] = true;
+		keypadPresses->keys[keypadPresses->inputMapping[UP]] = true;
+	}
+	if (ctrl.buttons & (SCE_CTRL_DOWN))
+	{
+		keypadPresses->keys[keypadPresses->inputMapping[DOWN]] = true;
+	}
+	if (ctrl.buttons & (SCE_CTRL_LEFT))
+	{
+		keypadPresses->keys[keypadPresses->inputMapping[LEFT]] = true;
+	}
+	if (ctrl.buttons & (SCE_CTRL_RIGHT))
+	{
+		keypadPresses->keys[keypadPresses->inputMapping[RIGHT]] = true;
+	}
+	if (ctrl.buttons & (SCE_CTRL_TRIANGLE))
+	{
+		keypadPresses->keys[keypadPresses->inputMapping[TRIANGLE]] = true;
+	}
+	if (ctrl.buttons & (SCE_CTRL_CIRCLE))
+	{
+		keypadPresses->keys[keypadPresses->inputMapping[CIRCLE]] = true;
+	}
+	if (ctrl.buttons & (SCE_CTRL_CROSS))
+	{
+		keypadPresses->keys[keypadPresses->inputMapping[CROSS]] = true;
+	}
+	if (ctrl.buttons & (SCE_CTRL_SQUARE))
+	{
+		keypadPresses->keys[keypadPresses->inputMapping[SQUARE]] = true;
+	}
+	if (ctrl.buttons & (SCE_CTRL_START))
+	{
+		keypadPresses->keys[keypadPresses->inputMapping[START]] = true;
+	}
+	if (ctrl.buttons & (SCE_CTRL_SELECT))
+	{
+		keypadPresses->keys[keypadPresses->inputMapping[SELECT]] = true;
+	}
+	if (ctrl.buttons & (SCE_CTRL_LTRIGGER))
+	{
+		keypadPresses->keys[keypadPresses->inputMapping[LTRIGGER]] = true;
+	}
+	if (ctrl.buttons & (SCE_CTRL_RTRIGGER))
+	{
+		keypadPresses->keys[keypadPresses->inputMapping[RTRIGGER]] = true;
+	}
+
+	if (ctrl.ly < 50)
+	{
+		keypadPresses->keys[keypadPresses->inputMapping[LSTICKUP]] = true;
+	}
+	if (ctrl.ly > 205)
+	{
+		keypadPresses->keys[keypadPresses->inputMapping[LSTICKDOWN]] = true;
+	}
+	if (ctrl.lx < 50)
+	{
+		keypadPresses->keys[keypadPresses->inputMapping[LSTICKLEFT]] = true;
+	}
+	if (ctrl.lx > 205)
+	{
+		keypadPresses->keys[keypadPresses->inputMapping[LSTICKRIGHT]] = true;
+	}
+
+	if (ctrl.ry < 50)
+	{
+		keypadPresses->keys[keypadPresses->inputMapping[RSTICKUP]] = true;
+	}
+	if (ctrl.ry > 205)
+	{
+		keypadPresses->keys[keypadPresses->inputMapping[RSTICKDOWN]] = true;
+	}
+	if (ctrl.rx < 50)
+	{
+		keypadPresses->keys[keypadPresses->inputMapping[RSTICKLEFT]] = true;
+	}
+	if (ctrl.rx > 205)
+	{
+		keypadPresses->keys[keypadPresses->inputMapping[RSTICKRIGHT]] = true;
 	}
 
 }
