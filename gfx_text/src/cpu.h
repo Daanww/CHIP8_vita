@@ -35,7 +35,7 @@ typedef struct {
 } machine;
 
 
-
+void initProcessor(machine* cpu);
 bool isStackEmpty(machine* cpu);
 bool isStackFull(machine* cpu);
 void pushStack(machine* cpu, unsigned short address);
@@ -46,7 +46,8 @@ void clearRom(machine* cpu);
 void loadFont(machine* cpu);
 void clearMemory(machine* cpu);
 void clearScreen(machine* cpu);
-void processIntructions(int n, machine* cpu);
+void processInstructions(int n, machine* cpu);
+void instruction_DXYN(unsigned int instruction, machine* cpu);
 
 
 #endif // !CPU_H

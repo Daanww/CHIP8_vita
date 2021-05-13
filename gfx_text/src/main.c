@@ -197,20 +197,10 @@ int main(int argc, char *argv[])
 
 	//create the main processor and initializing stuff
 	machine cpu;
-	loadFont(&cpu);
+	initProcessor(&cpu);
 	loadRom(&cpu, "IBM_Logo.ch8");
-	clearScreen(&cpu);
-
-	//initialize memory, registers, stack, timers
-	//also adding them to both arrays needed for proper text rendering
-
-	//4KB of ram, this is where the font and the game itself gets loaded into
-	//cpu.RAM = { 0x0 };
-	//unsigned char RAM[0xFFF] = { 0x0 };
-
-	//16 registers (0-F, with register F being flag register)
-	//cpu.registers = { 0x0 };
-	//unsigned short registers[0x10] = { 0x0 };
+	
+	//--- Add all text element to text arrays ---
 
 	//a struct to initialize all the register structs with
 	struct textData registertextDataArray[16] = { 0 };
@@ -270,10 +260,6 @@ int main(int argc, char *argv[])
 	//bottom of the registers is at registerHeaderData.y + (textSize * 6 /5) * 9
 
 	
-
-	//indexRegister(points to memory adresses)
-	cpu.indexRegister = 0x0;
-	//unsigned short indexRegister = 0x0;
 	struct textData indexRegisterData = {
 		.text = "indexRegister",
 		.size = textSize,
@@ -290,9 +276,7 @@ int main(int argc, char *argv[])
 	addToTextArrays(&indexRegisterData, &(cpu.indexRegister));
 
 
-	//program counter (points to current instruction in memory)
-	cpu.programCounter = 0x0;
-	//unsigned short programCounter = 0x0;
+
 	struct textData programCounterData = {
 		.text = "programCounter",
 		.size = textSize,
@@ -308,13 +292,7 @@ int main(int argc, char *argv[])
 		.numTexture = NULL };
 	addToTextArrays(&programCounterData, &(cpu.programCounter));
 
-	//stack (holds memory locations for calling/returning from subroutines)
-	//cpu.stack = { 0x0 };
-	cpu.stackTop = -1;
-	cpu.stackTopAddress = 0x0;
-	//unsigned short stack[32] = { 0x0 };
-	//short stackTop = -1;
-	//unsigned short stackTopAddress = 0;
+
 
 	struct textData stackTopData = {
 		.text = "stackTop:",
@@ -347,11 +325,6 @@ int main(int argc, char *argv[])
 	addToTextArrays(&stackTopAddressData, &(cpu.stackTopAddress));
 
 
-	//timers
-	cpu.delayTimer = 60;
-	cpu.soundTimer = 60;
-	//short delayTimer = 60;
-	//short soundTimer = 60;
 
 	struct textData delayTimerData = {
 		.text = "delayTimer:",
@@ -438,6 +411,12 @@ int main(int argc, char *argv[])
 		//drawing to screen
 		if (SDL_GetTicks() >= (lastDrawTime + timeBetweenDraws))
 		{
+			if (input.keys[0])
+				break;
+
+			//process instruction
+			processInstructions(1, &cpu);
+
 			//clearing screen
 			SDL_SetRenderDrawColor(renderer, color_black.r, color_black.g, color_black.b, 255);
 			SDL_RenderClear(renderer);
@@ -448,14 +427,8 @@ int main(int argc, char *argv[])
 			SDL_RenderFillRect(renderer, &(gameWindow[1]));
 			SDL_RenderFillRect(renderer, &(gameWindow[2]));
 			
-			//testing if input is working
-			if (input.keys[1])
-			{
-				SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
-				SDL_RenderFillRect(renderer, &(gameWindow[0]));
-			}
-			if (input.keys[0])
-				break;
+			
+
 
 
 			//drawing pixelArray
@@ -468,27 +441,6 @@ int main(int argc, char *argv[])
 
 			SDL_RenderPresent(renderer);
 			totalFrames++;
-
-			//updating indexRegister to see if the texture also automatically gets updated
-			if (totalFrames % 3 == 0)
-				cpu.indexRegister++;
-			cpu.programCounter++;
-			if (totalFrames % 5 == 0)
-				cpu.registers[0]++;
-			cpu.registers[1]++;
-			if (totalFrames % 2 == 0)
-				cpu.registers[1]--;
-			cpu.registers[10]++;
-
-			
-			if (totalFrames % 20 == 0)
-			{
-				pushStack(&cpu, totalFrames);
-			}
-			if (totalFrames % 30 == 0)
-			{
-				int i = popStack(&cpu);
-			}
 			
 
 		}
