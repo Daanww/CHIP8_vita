@@ -13,7 +13,7 @@ enum {
 
 typedef struct {
 	unsigned char memory[0x1000]; //address 0x000-0xFFF
-	unsigned short registers[0x10];
+	unsigned short registers[0x10]; //registers 0-F
 
 	unsigned short indexRegister;
 	unsigned short programCounter;
@@ -31,6 +31,8 @@ typedef struct {
 	short soundTimer;
 
 	bool isPaused;
+
+	unsigned short currentInstruction;
 
 } machine;
 

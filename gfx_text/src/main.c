@@ -90,6 +90,65 @@ int DrawPixelArray(machine* cpu, SDL_Rect pixel)
 	return thisDrawTime;
 }
 
+void testDraw(machine* cpu)
+{
+	//draw pikachu
+
+	cpu->pixelArray[10][11] = true;
+	cpu->pixelArray[10][12] = true;
+	cpu->pixelArray[10][17] = true;
+
+	cpu->pixelArray[11][12] = true;
+	cpu->pixelArray[11][13] = true;
+	cpu->pixelArray[11][17] = true;
+
+	cpu->pixelArray[12][13] = true;
+	cpu->pixelArray[12][14] = true;
+	cpu->pixelArray[12][15] = true;
+	cpu->pixelArray[12][16] = true;
+	cpu->pixelArray[12][17] = true;
+	
+	cpu->pixelArray[13][10] = true;
+	cpu->pixelArray[13][11] = true;
+	cpu->pixelArray[13][13] = true;
+	cpu->pixelArray[13][14] = true;
+	cpu->pixelArray[13][15] = true;
+	cpu->pixelArray[13][16] = true;
+	cpu->pixelArray[13][17] = true;
+
+	cpu->pixelArray[14][10] = true;
+	cpu->pixelArray[14][11] = true;
+	cpu->pixelArray[14][13] = true;
+	cpu->pixelArray[14][14] = true;
+	cpu->pixelArray[14][15] = true;
+	cpu->pixelArray[14][16] = true;
+	cpu->pixelArray[14][17] = true;
+	cpu->pixelArray[14][17] = true;
+
+	cpu->pixelArray[15][11] = true;
+	cpu->pixelArray[15][13] = true;
+	cpu->pixelArray[15][14] = true;
+	cpu->pixelArray[15][15] = true;
+	cpu->pixelArray[15][16] = true;
+
+	cpu->pixelArray[16][11] = true;
+	cpu->pixelArray[16][12] = true;
+	cpu->pixelArray[16][13] = true;
+	cpu->pixelArray[16][14] = true;
+	cpu->pixelArray[16][15] = true;
+	cpu->pixelArray[16][16] = true;
+
+	cpu->pixelArray[17][12] = true;
+	cpu->pixelArray[17][13] = true;
+	cpu->pixelArray[17][14] = true;
+	cpu->pixelArray[17][15] = true;
+	cpu->pixelArray[17][16] = true;
+
+
+
+
+}
+
 //initializes SDL and TTF. Also creates window and renderer
 bool initialize()
 {
@@ -356,6 +415,21 @@ int main(int argc, char *argv[])
 		.numTexture = NULL };
 	addToTextArrays(&soundTimerData, &(cpu.soundTimer));
 
+	struct textData currentInstructionData = {
+	.text = "Instr:",
+	.size = textSize,
+	.textColor = color_red,
+	.x = 5,
+	.y = 425,
+	.textTexture = NULL,
+	.hasNumValue = true,
+	.numValue = 0,
+	.xOffset = textSize * 4,
+	.yOffset = 0,
+	.numColor = color_white,
+	.numTexture = NULL };
+	addToTextArrays(&currentInstructionData, &(cpu.currentInstruction));
+
 	//create textures for all text elements
 	for (int i = 0; i < 63; i++)
 	{
@@ -393,7 +467,8 @@ int main(int argc, char *argv[])
 	int timeBetweenDraws = 30; //time in milliseconds
 	int totalFrames = 0;
 	int lastUpdateTimersTime = 0;
-	
+	keypadPresses oldInput;
+	bool pressCROSS = false;
 
 	//main loop
 	while (true)
@@ -401,7 +476,14 @@ int main(int argc, char *argv[])
 		
 		updateTextElementsNumValues();
 		
+		oldInput = input;
 		getInput(&input);
+
+		if (input.keys[7] && !(oldInput.keys[7]))
+		{
+			pressCROSS = true;
+
+		}
 
 		if (SDL_GetTicks() >= (lastUpdateTimersTime + 15))
 		{
@@ -414,8 +496,13 @@ int main(int argc, char *argv[])
 			if (input.keys[0])
 				break;
 
-			//process instruction
-			processInstructions(1, &cpu);
+			if (pressCROSS)
+			{
+				//process instruction
+				processInstructions(1, &cpu);
+				//testDraw(&cpu);
+				pressCROSS = false;
+			}
 
 			//clearing screen
 			SDL_SetRenderDrawColor(renderer, color_black.r, color_black.g, color_black.b, 255);

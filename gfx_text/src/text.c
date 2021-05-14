@@ -25,7 +25,7 @@ TTF_Font *currentFont = NULL;
 
 
 //convert a number to a string in hex representation
-char *hexToString(short hex)
+char *hexToString(int hex)
 {
 	static char string[8];
 	if (hex >= 0)

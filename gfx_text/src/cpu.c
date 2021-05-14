@@ -166,7 +166,7 @@ void clearScreen(machine* cpu)
 void processInstructions(int n, machine* cpu)
 {
 	unsigned int instruction = 0;
-	unsigned char firstNibble = 0;
+	
 	
 
 	for (int i = 0; i < n; i++)
@@ -178,39 +178,39 @@ void processInstructions(int n, machine* cpu)
 		instruction = instruction | cpu->memory[cpu->programCounter];
 		cpu->programCounter++;
 
-
-		//decode instruction partially
-		firstNibble = instruction & 0xF000;
+		cpu->currentInstruction = instruction;
+		
 
 		//decode and execute instruction
-		switch (firstNibble)
+		switch (instruction & 0xF000)
 		{
-		case 0x0:
+		case 0x0000:
 			//00E0 clear screen
 			clearScreen(cpu);
 			break;
 
-		case 0x1:
+		case 0x1000:
 			//1NNN jump to address NNN
 			cpu->programCounter = (instruction & 0x0FFF);
 			break;
 
-		case 0x6:
+		case 0x6000:
+			
 			//6XNN set register VX to value NN
-			cpu->registers[instruction & 0x0F00] = (instruction & 0x0FF);
+			cpu->registers[(instruction & 0x0F00) >> 8] = (instruction & 0x0FF);
 			break;
 
-		case 0x7:
+		case 0x7000:
 			//7XNN add value NN to register VX
-			cpu->registers[instruction & 0x0F00] += (instruction & 0x0FF);
+			cpu->registers[(instruction & 0x0F00) >> 8] += (instruction & 0x0FF);
 			break;
 
-		case 0xA:
+		case 0xA000:
 			//ANNN set indexregister to value NNN
 			cpu->indexRegister = (instruction & 0x0FFF);
 			break;
 
-		case 0xD:
+		case 0xD000:
 			/*
 			//DXYN draw sprite (from memory location pointed at by indexregister) at coordinates stored in registers VX and VY with height N
 			//thus X corresponds to which register stores the value for the x-axis and Y for the register which stores the value for the y-axis
@@ -274,52 +274,58 @@ void processInstructions(int n, machine* cpu)
 
 void instruction_DXYN(unsigned int instruction, machine* cpu)
 {
+	//DebugPrintValue("Draw Instruction!", instruction);
+
 	//DXYN draw sprite (from memory location pointed at by indexregister) at coordinates stored in registers VX and VY with height N
 			//thus X corresponds to which register stores the value for the x-axis and Y for the register which stores the value for the y-axis
 
+	unsigned char x_base = 0;
+	x_base = cpu->registers[(instruction & 0x0F00) >> 8];
+
+	unsigned char y_base = 0;
+	y_base = cpu->registers[(instruction & 0x00F0) >> 4];
+
+	unsigned char height = (instruction & 0x000F);
+	
 	unsigned char xcoordinate = 0;
-	xcoordinate = cpu->registers[instruction & 0x0F00];
-
 	unsigned char ycoordinate = 0;
-	ycoordinate = cpu->registers[instruction & 0x00F0];
+	
+	
 
-	unsigned char height = instruction & 0x000F;
-
-	//for if the xcoordinate gets wrapped
-	xcoordinate = xcoordinate & (numColumns - 1);
-	//for if the ycoordinate gets wrapped
-	ycoordinate = ycoordinate & (numRows - 1);
+	
 
 	//instruction sets the F register to 0, it will be set to 1 if any pixels on the screen were "turned off" by this operation
 	//when a sprite gets draw the pixels of the sprite are XOR'ed with the pixels on screen, thus it can happen that pixels are turned off
 	cpu->registers[0xF] = 0;
 
 	int spriteWidth = 8;
-	unsigned char spriteData = 0;
+	unsigned int spriteData = 0;
 	for (int row = 0; row < height; row++)
 	{
-		//breaking if we go offscreen
-		if ((ycoordinate + row) > (numRows - 1))
-			break;
+		
+			//for if the ycoordinate gets wrapped
+			ycoordinate = (y_base + row) % numRows;
 
-		spriteData = cpu->memory[cpu->indexRegister + row];
+		spriteData = cpu->memory[(cpu->indexRegister) + row];
 		for (int col = 0; col < spriteWidth; col++)
 		{
-			//breaking if we go offscreen
-			if ((xcoordinate + col) > (numColumns - 1))
-				break;
+				xcoordinate = (x_base + col) % numColumns;
 
+				
 			//checking left most bit of spriteData (0x80 = 10000000 in binary)
-			if ((spriteData & 0x80) > 0)
+			if ((spriteData & (0x80 >> col)) > 0)
 			{
-				cpu->pixelArray[xcoordinate + col][ycoordinate + row] = cpu->pixelArray[xcoordinate + col][ycoordinate + row] ^ 0x1;
-				if (cpu->pixelArray[xcoordinate + col][ycoordinate + row] == 0)
+				if (cpu->pixelArray[ycoordinate][xcoordinate] == 0)
 				{
+					cpu->pixelArray[ycoordinate][xcoordinate] = 1;
+					
+				}
+				else
+				{
+					cpu->pixelArray[ycoordinate][xcoordinate] = 0;
 					cpu->registers[0xF] = 1;
 				}
 			}
-			//shift the next bit into the left most position
-			spriteData << 1;
 		}
 	}
 }
