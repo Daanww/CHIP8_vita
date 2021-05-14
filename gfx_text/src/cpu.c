@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <time.h>
 
 #include "cpu.h"
 #include "debugScreen.h"
@@ -42,6 +43,7 @@ void initProcessor(machine* cpu)
 
 	cpu->delayTimer = 60;
 	cpu->soundTimer = 60;
+	srand(time(NULL));
 }
 
 bool isStackEmpty(machine* cpu)
@@ -185,13 +187,53 @@ void processInstructions(int n, machine* cpu)
 		switch (instruction & 0xF000)
 		{
 		case 0x0000:
+			if (instruction == 0x00E0)
+			{
 			//00E0 clear screen
 			clearScreen(cpu);
 			break;
+			}
+
+			if (instruction == 0x00EE)
+			{
+				//00EE return from subroutine
+				cpu->programCounter = popStack(cpu);
+				break;
+			}
 
 		case 0x1000:
 			//1NNN jump to address NNN
 			cpu->programCounter = (instruction & 0x0FFF);
+			break;
+
+		case 0x2000:
+			//2NNN call subroutine at address NNN
+			pushStack(cpu, cpu->programCounter);
+			cpu->programCounter = (instruction & 0x0FFF);
+			break;
+
+		case 0x3000:
+			//3XNN skip one instruction if VX == NN
+			if (cpu->registers[(instruction & 0x0F00) >> 8] == (instruction & 0x00FF))
+			{
+				cpu->programCounter += 2;
+			}
+			break;
+
+		case 0x4000:
+			//4XNN skip one instruction if VX != NN
+			if (cpu->registers[(instruction & 0x0F00) >> 8] != (instruction & 0x00FF))
+			{
+				cpu->programCounter += 2;
+			}
+			break;
+
+		case 0x5000:
+			//5XY0 skip one instruction if VX == VY
+			if(cpu->registers[(instruction & 0x0F00) >> 8] == cpu->registers[(instruction & 0x00F0) >> 4])
+			{
+				cpu->programCounter += 2;
+			}
 			break;
 
 		case 0x6000:
@@ -201,8 +243,99 @@ void processInstructions(int n, machine* cpu)
 			break;
 
 		case 0x7000:
-			//7XNN add value NN to register VX
+			//7XNN add value NN to register VX, this does not affect carry flag
 			cpu->registers[(instruction & 0x0F00) >> 8] += (instruction & 0x0FF);
+			break;
+
+		case 0x8000:
+			//logic and arithmatic instructions
+
+			switch (instruction & 0x000F)
+			{
+			case 0x0:
+				//8XY0 set VX to VY (VX = VY)
+				cpu->registers[(instruction & 0x0F00) >> 8] = cpu->registers[(instruction & 0x00F0) >> 4];
+				break;
+
+			case 0x1:
+				//8XY1 set VX to VX OR VY
+				cpu->registers[(instruction & 0x0F00) >> 8] = cpu->registers[(instruction & 0x0F00) >> 8] | cpu->registers[(instruction & 0x00F0) >> 4];
+				break;
+
+			case 0x2:
+				//8XY2 set VX to VX AND VY
+				cpu->registers[(instruction & 0x0F00) >> 8] = cpu->registers[(instruction & 0x0F00) >> 8] & cpu->registers[(instruction & 0x00F0) >> 4];
+				break;
+
+			case 0x3:
+				//8XY3 set VX to VX XOR VY
+				cpu->registers[(instruction & 0x0F00) >> 8] = cpu->registers[(instruction & 0x0F00) >> 8] ^ cpu->registers[(instruction & 0x00F0) >> 4];
+				break;
+
+			case 0x4:
+				//8XY4 set VX to VX + VY, this does affect carry flag
+				if ((cpu->registers[(instruction & 0x0F00) >> 8] + cpu->registers[(instruction & 0x00F0) >> 4]) > 255)
+				{
+					cpu->registers[0xF] = 1;
+				}
+				else
+				{
+					cpu->registers[0xF] = 0;
+				}
+				cpu->registers[(instruction & 0x0F00) >> 8] = cpu->registers[(instruction & 0x0F00) >> 8] + cpu->registers[(instruction & 0x00F0) >> 4];
+				break;
+
+			case 0x5:
+				//8XY5 set VX to VX - VY 
+				//if VX > VY, VF = 1 else, VF = 0
+				if (cpu->registers[(instruction & 0x0F00) >> 8] > cpu->registers[(instruction & 0x00F0) >> 4])
+				{
+					cpu->registers[0xF] = 1;
+				}
+				else
+				{
+					cpu->registers[0xF] = 0;
+				}
+				cpu->registers[(instruction & 0x0F00) >> 8] = cpu->registers[(instruction & 0x0F00) >> 8] - cpu->registers[(instruction & 0x00F0) >> 4];
+				break;
+
+			case 0x6:
+				//8XY6 set VX to VY and then shift VX one bit to right, set VF to the bit that was shifted out
+				//in modern interpreters (90s onward) this instruction is a bit different with it ignoring VY and just shifting VX. This can cause problems with programs
+				cpu->registers[(instruction & 0x0F00) >> 8] = cpu->registers[(instruction & 0x00F0) >> 4];
+				cpu->registers[0xF] = (cpu->registers[(instruction & 0x0F00) >> 8] & 0x1);
+				cpu->registers[(instruction & 0x0F00) >> 8] >> 1;
+				break;
+
+			case 0x7:
+				//8XY7 set VX to VY - VX
+				//if VY > VX, VF = 1 else, VF = 0
+				if (cpu->registers[(instruction & 0x00F0) >> 4] > cpu->registers[(instruction & 0x0F00) >> 8])
+				{
+					cpu->registers[0xF] = 1;
+				}
+				else
+				{
+					cpu->registers[0xF] = 0;
+				}
+				cpu->registers[(instruction & 0x0F00) >> 8] = cpu->registers[(instruction & 0x00F0) >> 4] - cpu->registers[(instruction & 0x0F00) >> 8];
+				break;
+
+			case 0xE:
+				//8XYE set VX to VY and then shift VX one bit to left, set VF to the bit that was shifted out
+				//in modern interpreters (90s onward) this instruction is a bit different with it ignoring VY and just shifting VX. This can cause problems with programs
+				cpu->registers[(instruction & 0x0F00) >> 8] = cpu->registers[(instruction & 0x00F0) >> 4];
+				cpu->registers[0xF] = (cpu->registers[(instruction & 0x0F00) >> 8] & 0x80);
+				cpu->registers[(instruction & 0x0F00) >> 8] << 1;
+				break;
+			}
+
+		case 0x9000:
+			//9XY0 skip one instruction if VX != VY
+			if (cpu->registers[(instruction & 0x0F00) >> 8] != cpu->registers[(instruction & 0x00F0) >> 4])
+			{
+				cpu->programCounter += 2;
+			}
 			break;
 
 		case 0xA000:
@@ -210,61 +343,25 @@ void processInstructions(int n, machine* cpu)
 			cpu->indexRegister = (instruction & 0x0FFF);
 			break;
 
+		case 0xB000:
+			//BNNN set programcounter to NNN + V0
+			//in modern implementations it is changed to BXNN where it will jump to XNN + VX
+			//this can cause problems with programs
+			cpu->programCounter = ((instruction & 0x0FFF) + cpu->registers[0x0]);
+			break;
+
+		case 0xC000:
+			//CXNN generates random 8 bit number then AND with NN and put result in VX
+			unsigned char randValue = rand() % 0x100;
+			cpu->registers[(instruction & 0x0F00) >> 8] = (randValue & (instruction & 0x00FF));
+			break;
+
 		case 0xD000:
-			/*
-			//DXYN draw sprite (from memory location pointed at by indexregister) at coordinates stored in registers VX and VY with height N
-			//thus X corresponds to which register stores the value for the x-axis and Y for the register which stores the value for the y-axis
-
-			unsigned char xcoordinate = 0;
-			xcoordinate = cpu->registers[instruction & 0x0F00];
-
-			unsigned char ycoordinate = 0;
-			ycoordinate = cpu->registers[instruction & 0x00F0];
-
-			unsigned char height = instruction & 0x000F;
-
-			//for if the xcoordinate gets wrapped
-			xcoordinate = xcoordinate & (numColumns - 1);
-			//for if the ycoordinate gets wrapped
-			ycoordinate = ycoordinate & (numRows - 1);
-
-			//instruction sets the F register to 0, it will be set to 1 if any pixels on the screen were "turned off" by this operation
-			//when a sprite gets draw the pixels of the sprite are XOR'ed with the pixels on screen, thus it can happen that pixels are turned off
-			cpu->registers[0xF] = 0;
-
-			int spriteWidth = 8;
-			unsigned char spriteData = 0;
-			for (int row = 0; row < height; row++)
-			{
-				//breaking if we go offscreen
-				if ((ycoordinate + row) > (numRows - 1))
-					break;
-
-				spriteData = cpu->memory[cpu->indexRegister + row];
-				for (int col = 0; col < spriteWidth; col++)
-				{
-					//breaking if we go offscreen
-					if ((xcoordinate + col) > (numColumns - 1))
-						break;
-
-					//checking left most bit of spriteData (0x80 = 10000000 in binary)
-					if ((spriteData & 0x80) > 0)
-					{
-						cpu->pixelArray[xcoordinate + col][ycoordinate + row] = cpu->pixelArray[xcoordinate + col][ycoordinate + row] ^ 0x1;
-						if (cpu->pixelArray[xcoordinate + col][ycoordinate + row] == 0)
-						{
-							cpu->registers[0xF] = 1;
-						}
-					}
-					//shift the next bit into the left most position
-					spriteData << 1;
-				}
-			}
-			*/
 			instruction_DXYN(instruction, cpu);
 			break;
 
-
+		default:
+			DebugPrintValue("Unknown instruction!", instruction);
 		}
 	}
 
@@ -274,7 +371,6 @@ void processInstructions(int n, machine* cpu)
 
 void instruction_DXYN(unsigned int instruction, machine* cpu)
 {
-	//DebugPrintValue("Draw Instruction!", instruction);
 
 	//DXYN draw sprite (from memory location pointed at by indexregister) at coordinates stored in registers VX and VY with height N
 			//thus X corresponds to which register stores the value for the x-axis and Y for the register which stores the value for the y-axis
@@ -312,7 +408,7 @@ void instruction_DXYN(unsigned int instruction, machine* cpu)
 				xcoordinate = (x_base + col) % numColumns;
 
 				
-			//checking left most bit of spriteData (0x80 = 10000000 in binary)
+			//checking spriteData bit by bit
 			if ((spriteData & (0x80 >> col)) > 0)
 			{
 				if (cpu->pixelArray[ycoordinate][xcoordinate] == 0)

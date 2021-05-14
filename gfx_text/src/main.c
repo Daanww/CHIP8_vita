@@ -90,64 +90,6 @@ int DrawPixelArray(machine* cpu, SDL_Rect pixel)
 	return thisDrawTime;
 }
 
-void testDraw(machine* cpu)
-{
-	//draw pikachu
-
-	cpu->pixelArray[10][11] = true;
-	cpu->pixelArray[10][12] = true;
-	cpu->pixelArray[10][17] = true;
-
-	cpu->pixelArray[11][12] = true;
-	cpu->pixelArray[11][13] = true;
-	cpu->pixelArray[11][17] = true;
-
-	cpu->pixelArray[12][13] = true;
-	cpu->pixelArray[12][14] = true;
-	cpu->pixelArray[12][15] = true;
-	cpu->pixelArray[12][16] = true;
-	cpu->pixelArray[12][17] = true;
-	
-	cpu->pixelArray[13][10] = true;
-	cpu->pixelArray[13][11] = true;
-	cpu->pixelArray[13][13] = true;
-	cpu->pixelArray[13][14] = true;
-	cpu->pixelArray[13][15] = true;
-	cpu->pixelArray[13][16] = true;
-	cpu->pixelArray[13][17] = true;
-
-	cpu->pixelArray[14][10] = true;
-	cpu->pixelArray[14][11] = true;
-	cpu->pixelArray[14][13] = true;
-	cpu->pixelArray[14][14] = true;
-	cpu->pixelArray[14][15] = true;
-	cpu->pixelArray[14][16] = true;
-	cpu->pixelArray[14][17] = true;
-	cpu->pixelArray[14][17] = true;
-
-	cpu->pixelArray[15][11] = true;
-	cpu->pixelArray[15][13] = true;
-	cpu->pixelArray[15][14] = true;
-	cpu->pixelArray[15][15] = true;
-	cpu->pixelArray[15][16] = true;
-
-	cpu->pixelArray[16][11] = true;
-	cpu->pixelArray[16][12] = true;
-	cpu->pixelArray[16][13] = true;
-	cpu->pixelArray[16][14] = true;
-	cpu->pixelArray[16][15] = true;
-	cpu->pixelArray[16][16] = true;
-
-	cpu->pixelArray[17][12] = true;
-	cpu->pixelArray[17][13] = true;
-	cpu->pixelArray[17][14] = true;
-	cpu->pixelArray[17][15] = true;
-	cpu->pixelArray[17][16] = true;
-
-
-
-
-}
 
 //initializes SDL and TTF. Also creates window and renderer
 bool initialize()
@@ -500,7 +442,6 @@ int main(int argc, char *argv[])
 			{
 				//process instruction
 				processInstructions(1, &cpu);
-				//testDraw(&cpu);
 				pressCROSS = false;
 			}
 
