@@ -1,5 +1,6 @@
 #ifndef CPU_H
 #define CPU_H
+#include "input.h"
 
 #define STACK_SIZE 16 //stack size in bytes
 #define PROGRAM_START_ADDRESS 0x200 //memory location where programs will be loaded
@@ -34,10 +35,12 @@ typedef struct {
 
 	unsigned short currentInstruction;
 
+	bool* keys; //a reference to the keys array in input, will be used for input checking instructions. Assumed size is 17 because thats the size of the array in input at the current time
+
 } machine;
 
 
-void initProcessor(machine* cpu);
+void initProcessor(machine* cpu, keypadPresses* input);
 bool isStackEmpty(machine* cpu);
 bool isStackFull(machine* cpu);
 void pushStack(machine* cpu, unsigned short address);

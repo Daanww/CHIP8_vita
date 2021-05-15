@@ -13,6 +13,12 @@
 #define printf psvDebugScreenPrintf
 
 
+const static char romNames[3][32] = 
+{
+	"BC_test.ch8",
+	"IBM_Logo.ch8",
+	"test_opcode.ch8"
+};
 
 
 //some colors I got from colorhunt.co
@@ -198,8 +204,8 @@ int main(int argc, char *argv[])
 
 	//create the main processor and initializing stuff
 	machine cpu;
-	initProcessor(&cpu);
-	loadRom(&cpu, "IBM_Logo.ch8");
+	initProcessor(&cpu, &input);
+	loadRom(&cpu, romNames[2]);
 	
 	//--- Add all text element to text arrays ---
 
@@ -411,6 +417,7 @@ int main(int argc, char *argv[])
 	int lastUpdateTimersTime = 0;
 	keypadPresses oldInput;
 	bool pressCROSS = false;
+	bool pressTRIANGLE = false;
 
 	//main loop
 	while (true)
@@ -443,6 +450,10 @@ int main(int argc, char *argv[])
 				//process instruction
 				processInstructions(1, &cpu);
 				pressCROSS = false;
+			}
+			if (input.keys[5])
+			{
+				processInstructions(1, &cpu);
 			}
 
 			//clearing screen

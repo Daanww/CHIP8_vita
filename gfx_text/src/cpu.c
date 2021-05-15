@@ -7,6 +7,8 @@
 #include "cpu.h"
 #include "debugScreen.h"
 
+#define FONT_START 0x50
+
 const static char fontArray[] = {
 	0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
 	0x20, 0x60, 0x20, 0x20, 0x70, // 1
@@ -27,7 +29,8 @@ const static char fontArray[] = {
 };
 
 
-void initProcessor(machine* cpu)
+
+void initProcessor(machine* cpu, keypadPresses* input)
 {
 	clearScreen(cpu);
 	clearMemory(cpu);
@@ -44,6 +47,7 @@ void initProcessor(machine* cpu)
 	cpu->delayTimer = 60;
 	cpu->soundTimer = 60;
 	srand(time(NULL));
+	cpu->keys = input->keys;
 }
 
 bool isStackEmpty(machine* cpu)
@@ -142,7 +146,7 @@ void loadFont(machine* cpu)
 //stores font from 0x050-0x09F
 	for (int i = 0; i < (sizeof(fontArray) / sizeof(char)); i++)
 	{
-		cpu->memory[0x50 + i] = fontArray[i];
+		cpu->memory[FONT_START + i] = fontArray[i];
 	}
 }
 
@@ -352,13 +356,128 @@ void processInstructions(int n, machine* cpu)
 
 		case 0xC000:
 			//CXNN generates random 8 bit number then AND with NN and put result in VX
-			unsigned char randValue = rand() % 0x100;
+		{
+			unsigned char randValue;
+			randValue = rand() % 0x100;
 			cpu->registers[(instruction & 0x0F00) >> 8] = (randValue & (instruction & 0x00FF));
 			break;
+		}
 
 		case 0xD000:
 			instruction_DXYN(instruction, cpu);
 			break;
+
+		case 0xE00:
+			if ((instruction & 0x00F) == 0x1)
+			{
+				//EXA1 skip next instruction (increment pc by 2) if the key corresponding to VX is !not! pressed
+				if (cpu->keys[cpu->registers[(instruction & 0x0F00) >> 8]] == false)
+				{
+					cpu->programCounter += 2;
+				}
+				break;
+			}
+			
+			if ((instruction & 0x00F) == 0xE)
+			{
+				//EX9E skip next instruction (increment pc by 2) if the key corresponding to VX is pressed
+				if (cpu->keys[cpu->registers[(instruction & 0x0F00) >> 8]] == true)
+				{
+					cpu->programCounter += 2;
+				}
+				break;
+			}
+
+		case 0xF000:
+			if ((instruction & 0x00FF) == 0x07)
+			{
+				//FX07 set VX to current value of delay timer
+				cpu->registers[(instruction & 0x0F00) >> 8] = cpu->delayTimer;
+				break;
+			}
+
+			if ((instruction & 0x00FF) == 0x15)
+			{
+				//FX15 set delay timer to VX
+				cpu->delayTimer = cpu->registers[(instruction & 0x0F00) >> 8];
+				break;
+			}
+
+			if ((instruction & 0x00FF) == 0x18)
+			{
+				//FX18 set sound timer to VX
+				cpu->soundTimer = cpu->registers[(instruction & 0x0F00) >> 8];
+				break;
+			}
+
+			if ((instruction & 0x00FF) == 0x1E)
+			{
+				//FX1E add VX to indexregister
+				//on the original implementation this did not affect the carry flag for if indexregister get set to >0x1000 (outside memory range) but some later implementations do set carry flag. There does not seem to be a reason to not set the carry flag but thats not for certain
+				cpu->indexRegister += cpu->registers[(instruction & 0x0F00) >> 8];
+				if (cpu->indexRegister > 0xFFF)
+					cpu->registers[0xF] = 1;
+				break;
+			}
+
+			if ((instruction & 0x00FF) == 0x0A)
+			{
+				//FX0A decrements pc by two (effectively infinite looping itself) unless a key input is made. If a key input is made then store the hex value of that key in VX and increment pc by two to move on to the next instruction
+				cpu->programCounter -= 2;
+				for (int i = 0; i < 17; i++)
+				{
+					if (cpu->keys[i] == true)
+					{
+						cpu->registers[(instruction & 0x0F00) >> 8] = i;
+						cpu->programCounter += 2;
+						break;
+					}
+				}
+				break;
+			}
+
+			if ((instruction & 0x00FF) == 0x29)
+			{
+				//FX29 indexregister is set to the address of the font character corresponding to the hexidecimal number in VX. This takes the right number of the 2 possible numbers in VX (if VX = D3 then set register to font character 3)
+				//the font is stored as 5 byte characters starting at FONT_START and is stored in ascending order (0,1,2,3... D,E,F) 0 starts FONT_START and F ends at FONT_START+5*16
+				int fontCharacter = FONT_START + cpu->registers[(instruction & 0x0F00) >> 8] * 5;
+				cpu->indexRegister = fontCharacter;
+				break;
+			}
+
+			if ((instruction & 0x00FF) == 0x33)
+			{
+				//FX33 convert VX to 3 digit decimal number (9C -> 156) then store each of those individual digits at location indexregister, thus 1 will be stored at indexregister, 5 at indexregister+1 and 6 at indexregister+2
+				int value = cpu->registers[(instruction & 0x0F00) >> 8];
+				cpu->memory[cpu->indexRegister + 2] = value % 10;
+				value = value / 10;
+				cpu->memory[cpu->indexRegister + 1] = value % 10;
+				value = value / 10;
+				cpu->memory[cpu->indexRegister] = value;
+				break;
+			}
+
+			if ((instruction & 0x00FF) == 0x55)
+			{
+				//FX55 stores V0-VX (inclusive, if X = 0 it only stores V0) at successive memory adresses starting with indexregister. Thus V0 is stored at I, V1 at I+1, V2 at I+2 and so on.
+				//in the original implementation the indexregister would be incremented for the storage operations thus at the end of the instruction new I = old I + X + 1. In new implementations I does not change and is only used as a starting point. The newer implementation is more often used, thus will also be used here.
+				for (int a = 0; a < (((instruction & 0x0F00) >> 8) + 1); a++)
+				{
+					cpu->memory[cpu->indexRegister + a] = cpu->registers[a];
+				}
+				break;
+			}
+
+			if ((instruction & 0x00FF) == 0x65)
+			{
+				//FX65 sets V0-VX (inclusive, if X = 0 it only loads V0) to values in successive memory adresses starting with indexregister. Thus V0 is loaded from I, V1 from I+1, V2 from I+2 and so on.
+				//same implementations differences apply here as in the instruction above
+				for (int a = 0; a < (((instruction & 0x0F00) >> 8) + 1); a++)
+				{
+					cpu->registers[a] = cpu->memory[cpu->indexRegister + a];
+				}
+				break;
+			}
 
 		default:
 			DebugPrintValue("Unknown instruction!", instruction);
