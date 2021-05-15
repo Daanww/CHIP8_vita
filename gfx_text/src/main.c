@@ -13,13 +13,18 @@
 #define printf psvDebugScreenPrintf
 
 
-const static char romNames[3][32] = 
+const static char romNames[4][32] = 
 {
 	"BC_test.ch8",
 	"IBM_Logo.ch8",
-	"test_opcode.ch8"
+	"test_opcode.ch8",
+	"Space_invaders.ch8"
 };
-
+enum
+{
+	BC_test, IBM_Logo, test_opcode, Space_invaders
+};
+const static int currentRom = BC_test;
 
 //some colors I got from colorhunt.co
 SDL_Color color_white = { 0xEA, 0xEA, 0xEA };		// #eaeaea
@@ -73,6 +78,35 @@ void DebugPrintValue(const char function[], int value)
 	}
 
 
+}
+
+int romSelect(keypadPresses* input)
+{
+	int romSelect = 0;
+	psvDebugScreenInit();
+	keypadPresses oldInput;
+	while (input->keys[7] == false)
+	{
+		oldInput = *input;
+		getInput(input);
+		if (input->keys[2] && !(oldInput.keys[2]))
+		{
+			romSelect++;
+			if(romSelect > ((sizeof(romNames)/sizeof(romNames[0]) - 1)))
+				romSelect--;
+		}
+		if (input->keys[1] && !(oldInput.keys[1]))
+		{
+			romSelect--;
+			if (romSelect < 0)
+				romSelect++;
+		}
+		printf("Select a rom. Use UP & DOWN to browse roms and key7 to select. ");
+		printf("rom: %s\r", romNames[romSelect]);
+
+		sceKernelDelayThread(20 * 1000);
+	}
+	return romSelect;
 }
 
 //draws the pixelArray, returns the time at which it draws, use this to keep frame rate locked
@@ -205,7 +239,7 @@ int main(int argc, char *argv[])
 	//create the main processor and initializing stuff
 	machine cpu;
 	initProcessor(&cpu, &input);
-	loadRom(&cpu, romNames[2]);
+	loadRom(&cpu, romNames[romSelect(&input)]);
 	
 	//--- Add all text element to text arrays ---
 
@@ -416,7 +450,6 @@ int main(int argc, char *argv[])
 	int totalFrames = 0;
 	int lastUpdateTimersTime = 0;
 	keypadPresses oldInput;
-	bool pressCROSS = false;
 	bool pressTRIANGLE = false;
 
 	//main loop
@@ -428,11 +461,8 @@ int main(int argc, char *argv[])
 		oldInput = input;
 		getInput(&input);
 
-		if (input.keys[7] && !(oldInput.keys[7]))
-		{
-			pressCROSS = true;
-
-		}
+		if (input.keys[5])
+			pressTRIANGLE = true;
 
 		if (SDL_GetTicks() >= (lastUpdateTimersTime + 15))
 		{
@@ -445,16 +475,8 @@ int main(int argc, char *argv[])
 			if (input.keys[0])
 				break;
 
-			if (pressCROSS)
-			{
-				//process instruction
-				processInstructions(1, &cpu);
-				pressCROSS = false;
-			}
-			if (input.keys[5])
-			{
-				processInstructions(1, &cpu);
-			}
+			if (pressTRIANGLE)
+				processInstructions(STEPS_PER_CYCLE, &cpu);
 
 			//clearing screen
 			SDL_SetRenderDrawColor(renderer, color_black.r, color_black.g, color_black.b, 255);

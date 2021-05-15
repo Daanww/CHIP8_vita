@@ -248,8 +248,11 @@ void processInstructions(int n, machine* cpu)
 
 		case 0x7000:
 			//7XNN add value NN to register VX, this does not affect carry flag
-			cpu->registers[(instruction & 0x0F00) >> 8] += (instruction & 0x0FF);
+		{
+			unsigned char value = cpu->registers[(instruction & 0x0F00) >> 8] + (instruction & 0x0FF);
+			cpu->registers[(instruction & 0x0F00) >> 8] = value;
 			break;
+		}
 
 		case 0x8000:
 			//logic and arithmatic instructions
@@ -292,7 +295,7 @@ void processInstructions(int n, machine* cpu)
 			case 0x5:
 				//8XY5 set VX to VX - VY 
 				//if VX > VY, VF = 1 else, VF = 0
-				if (cpu->registers[(instruction & 0x0F00) >> 8] > cpu->registers[(instruction & 0x00F0) >> 4])
+				if (cpu->registers[(instruction & 0x0F00) >> 8] >= cpu->registers[(instruction & 0x00F0) >> 4])
 				{
 					cpu->registers[0xF] = 1;
 				}
@@ -306,9 +309,9 @@ void processInstructions(int n, machine* cpu)
 			case 0x6:
 				//8XY6 set VX to VY and then shift VX one bit to right, set VF to the bit that was shifted out
 				//in modern interpreters (90s onward) this instruction is a bit different with it ignoring VY and just shifting VX. This can cause problems with programs
-				cpu->registers[(instruction & 0x0F00) >> 8] = cpu->registers[(instruction & 0x00F0) >> 4];
-				cpu->registers[0xF] = (cpu->registers[(instruction & 0x0F00) >> 8] & 0x1);
-				cpu->registers[(instruction & 0x0F00) >> 8] >> 1;
+				//this is using the modern implementation
+				cpu->registers[0xF] = (cpu->registers[(instruction & 0x0F00) >> 8] & 1);
+				cpu->registers[(instruction & 0x0F00) >> 8] = cpu->registers[(instruction & 0x0F00) >> 8] / 2;
 				break;
 
 			case 0x7:
@@ -328,9 +331,16 @@ void processInstructions(int n, machine* cpu)
 			case 0xE:
 				//8XYE set VX to VY and then shift VX one bit to left, set VF to the bit that was shifted out
 				//in modern interpreters (90s onward) this instruction is a bit different with it ignoring VY and just shifting VX. This can cause problems with programs
-				cpu->registers[(instruction & 0x0F00) >> 8] = cpu->registers[(instruction & 0x00F0) >> 4];
-				cpu->registers[0xF] = (cpu->registers[(instruction & 0x0F00) >> 8] & 0x80);
-				cpu->registers[(instruction & 0x0F00) >> 8] << 1;
+				//this is using the modern implementation
+				if (cpu->registers[(instruction & 0x0F00) >> 8] >= 128)
+				{
+					cpu->registers[0xF] = 1;
+				}
+				else
+				{
+					cpu->registers[0xF] = 0;
+				}
+				cpu->registers[(instruction & 0x0F00) >> 8] = cpu->registers[(instruction & 0x0F00) >> 8] * 2;
 				break;
 			}
 
@@ -367,7 +377,7 @@ void processInstructions(int n, machine* cpu)
 			instruction_DXYN(instruction, cpu);
 			break;
 
-		case 0xE00:
+		case 0xE000:
 			if ((instruction & 0x00F) == 0x1)
 			{
 				//EXA1 skip next instruction (increment pc by 2) if the key corresponding to VX is !not! pressed
